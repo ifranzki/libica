@@ -21,3 +21,4 @@ before_script:
 
 script:
     - ./configure $CONFIG_OPTS 2> >(tee) && make check V=0 2> >(tee)
+    - coredumpctl info
