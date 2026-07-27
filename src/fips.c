@@ -267,7 +267,7 @@ fips_get_indicator(void)
 
 	/* Allow to override the kernel fips indication for testing on
 	 * non-fips systems. */
-	fips_override = getenv("LIBICA_FIPS_FLAG");
+	fips_override = secure_getenv("LIBICA_FIPS_FLAG");
 	if ((fips_override != NULL) && (atoi(fips_override) == 1))
 		fips_flag = '1';
 

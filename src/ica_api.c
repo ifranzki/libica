@@ -367,7 +367,7 @@ unsigned int ica_open_adapter(ica_adapter_handle_t *adapter_handle)
 	if (!adapter_handle)
 		return EINVAL;
 
-	name = getenv("LIBICA_CRYPT_DEVICE");
+	name = secure_getenv("LIBICA_CRYPT_DEVICE");
 	if (name)
 		*adapter_handle = open(name, O_RDWR);
 	else {
