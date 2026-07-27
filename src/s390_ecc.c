@@ -1286,9 +1286,17 @@ static unsigned int provide_pubkey(const ICA_EC_KEY *privkey, unsigned char *X, 
 	/* Calculate public (X,Y) values */
 #if !OPENSSL_VERSION_PREREQ(3, 0)
 	eckey = EC_KEY_new_by_curve_name(privkey->nid);
+	if (eckey == NULL) {
+		rc = EFAULT;
+		goto end;
+	}
 	EC_KEY_set_private_key(eckey, bn_d);
 	group = EC_KEY_get0_group(eckey);
 	pub_key = EC_POINT_new(group);
+	if (group == NULL || pub_key == NULL) {
+		rc = EFAULT;
+		goto end;
+	}
 	if (!EC_POINT_mul(group, pub_key, bn_d, NULL, NULL, NULL)) {
 		rc = EFAULT;
 		goto end;
@@ -1297,6 +1305,10 @@ static unsigned int provide_pubkey(const ICA_EC_KEY *privkey, unsigned char *X, 
 	/* Get (X,Y) as BIGNUMs */
 	bn_x = BN_new();
 	bn_y = BN_new();
+	if (bn_x == NULL || bn_y == NULL) {
+		rc = EFAULT;
+		goto end;
+	}
 	if (!EC_POINT_get_affine_coordinates_GFp(group, pub_key, bn_x, bn_y, NULL)) {
 		rc = EFAULT;
 		goto end;
