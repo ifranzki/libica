@@ -99,7 +99,7 @@ int drbg_instantiate(ica_drbg_t **sh,
 	/* step 3 */
 	if(!pers)
 		pers_len = 0;
-	else if(pers_len <= 0)
+	else if(pers_len == 0)
 		pers = NULL;
 	if(pers_len > mech->max_pers_len)
 		return DRBG_PERS_INV;
@@ -220,7 +220,7 @@ int drbg_reseed(ica_drbg_t *sh,
 	/* step 3 */
 	if(!add)
 		add_len = 0;
-	else if(add_len <= 0)
+	else if(add_len == 0)
 		add = NULL;
 	if(add_len > sh->mech->max_add_len)
 		return DRBG_ADD_INV;
@@ -300,7 +300,7 @@ int drbg_generate(ica_drbg_t *sh,
 	/* step 4 */
 	if(!add)
 		add_len = 0;
-	else if(add_len <= 0)
+	else if(add_len == 0)
 		add = NULL;
 	if(add_len > sh->mech->max_add_len)
 		return DRBG_ADD_INV;
