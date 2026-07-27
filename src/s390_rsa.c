@@ -57,9 +57,6 @@ static unsigned int mod_sub_sw(int min_length, unsigned char *minu, int sub_leng
 			       int *res_length, unsigned char *res, BN_CTX * ctx);
 static unsigned int mul_sw(int fc_1_length, unsigned char *fc1, int fc_2_length,
 			   unsigned char *fc2, int *res_length, unsigned char *res, BN_CTX *ctx);
-static unsigned int mod_expo_sw(int arg_length, unsigned char *arg, int exp_length,
-				unsigned char *exp, int mod_length, unsigned char *mod,
-				int *res_length, unsigned char *res, BN_CTX *ctx);
 #endif /* NO_SW_FALLBACKS */
 
 #if !OPENSSL_VERSION_PREREQ(3, 0)
