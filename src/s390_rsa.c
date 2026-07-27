@@ -953,7 +953,7 @@ static unsigned int mod_sub_sw(int min_length, unsigned char *minu, int sub_leng
 	int ln = 0;
 	int pad = 0;
 
-	int min_size, sub_size, dif_size;
+	int min_size, sub_size, dif_size = 0;
 
 #ifdef ICA_FIPS
 	if ((fips & ICA_FIPS_MODE) && (!openssl_in_fips_mode()))
