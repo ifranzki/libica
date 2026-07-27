@@ -152,7 +152,12 @@ int drbg_instantiate(ica_drbg_t **sh,
 		status = drbg_get_nonce(nonce, nonce_len);
 	}
 	else{			/* use test nonce */
-		memcpy(nonce, test_nonce, nonce_len);
+		if (test_nonce) {
+			memcpy(nonce, test_nonce, nonce_len);
+			status = 0;
+		} else {
+			status = drbg_get_nonce(nonce, nonce_len);
+		}
 	}
 	if(status){
 		status = DRBG_NONCE_INV;
