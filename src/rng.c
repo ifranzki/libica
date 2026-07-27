@@ -41,9 +41,8 @@ void rng_init(void)
 
 int rng_gen(unsigned char *buf, size_t buflen)
 {
-	const char *rngdev;
 	FILE *rng_fh;
-	int rc;
+	int rc, i;
 
 	if (rng_sh != NULL) {
 	    rc = ica_drbg_generate(rng_sh, 256, false, NULL, 0, buf, buflen);
@@ -51,8 +50,8 @@ int rng_gen(unsigned char *buf, size_t buflen)
 		return 0;
 	}
 
-	for (rngdev = RNGDEV[0]; rngdev != NULL; rngdev++) {
-		rng_fh = fopen(rngdev, "r");
+	for (i = 0; RNGDEV[i] != NULL; i++) {
+		rng_fh = fopen(RNGDEV[i], "r");
 		if (rng_fh) {
 			rc = fread(buf, buflen, 1, rng_fh);
 			fclose(rng_fh);
