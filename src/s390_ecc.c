@@ -945,6 +945,12 @@ unsigned int ecdh_hw(ica_adapter_handle_t adapter_handle,
 
 	rc = ioctl(adapter_handle, ZSECSENDCPRB, xcrb);
 	if (rc != 0) {
+		if (buf) {
+			OPENSSL_cleanse(buf, len);
+			free(buf);
+			buf = NULL;
+		}
+
 		dom_addressing = dom_addressing_default_domain;
 		reply_p = make_ecdh_request(privkey_A, pubkey_B, &xcrb, &buf, &len);
 		if (!reply_p) {
