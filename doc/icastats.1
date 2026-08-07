@@ -68,6 +68,16 @@ or system shut down. This also means that the statistical data shown with
 icastats is on a per user base and only the root user is able to see and
 maintain the collection of statistic data from libica at system scope.
 .P
+Counter values saturate at their maximum (UINT64_MAX = 18446744073709551615)
+rather than wrapping around. A saturated counter is displayed as
+.B [saturated]
+in the default text output. In JSON output, an additional boolean field with
+the suffix
+.B \-saturated
+set to
+.B true
+is emitted alongside the counter value.
+.P
 Newer operating systems might remove these shared memory segments
 after the user has logged out from the system (systemd cleanup action).
 In this case all collected statistic data are gone.
@@ -112,7 +122,10 @@ show statistic values from the given user (only root user)
 .IP "-k or --key-sizes"
 show libica statistic data per key size
 .IP "-j or --json"
-output the statistics in JSON format
+output the statistics in JSON format.
+Saturated counters are indicated by an extra
+.B \-saturated: true
+field next to the affected counter value.
 .SH FILES
 .nf
 /shm/dev/icastats_<userid>

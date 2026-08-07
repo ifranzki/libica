@@ -19,6 +19,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <limits.h>
 #include <pwd.h>
 #include <libgen.h>
 #include <errno.h>
@@ -77,6 +78,15 @@ const char *const STATS_DESC[ICA_NUM_STATS] = {
 
 
 #define CELL_SIZE 12
+
+static void fmt_counter(char *buf, size_t len, uint64_t val)
+{
+	if (val == UINT64_MAX)
+		snprintf(buf, len, "[saturated]");
+	else
+		snprintf(buf, len, "%lu", val);
+}
+
 void print_stats(stats_entry_t *stats, int key_sizes)
 {
 	printf(" function       |             hardware         |              software\n");
@@ -84,33 +94,47 @@ void print_stats(stats_entry_t *stats, int key_sizes)
 	printf("                |        ENC    CRYPT     DEC  |        ENC     CRYPT    DEC \n");
 	printf("----------------+------------------------------+-----------------------------\n");
 	unsigned int i;
+	char hw_enc[16], hw_dec[16], sw_enc[16], sw_dec[16];
+
 	for (i = 0; i < ICA_NUM_STATS; ++i) {
 		if (!key_sizes && strncmp(STATS_DESC[i], "- ", 2) == 0)
 			continue;
 
+		fmt_counter(hw_enc, sizeof(hw_enc), stats[i].enc.hw);
+		fmt_counter(hw_dec, sizeof(hw_dec), stats[i].dec.hw);
+		fmt_counter(sw_enc, sizeof(sw_enc), stats[i].enc.sw);
+		fmt_counter(sw_dec, sizeof(sw_dec), stats[i].dec.sw);
+
 		if (i <= ICA_STATS_RSA_CRT_4096) {
-			printf(" %14s |        %*lu          |         %*lu\n",
+			printf(" %14s |        %*s          |         %*s\n",
 			       STATS_DESC[i],
-			       CELL_SIZE,
-			       stats[i].enc.hw,
-			       CELL_SIZE,
-			       stats[i].enc.sw);
+			       CELL_SIZE, hw_enc,
+			       CELL_SIZE, sw_enc);
 		} else {
-			printf(" %14s |%*lu     %*lu |%*lu    %*lu\n",
+			printf(" %14s |%*s     %*s |%*s    %*s\n",
 			       STATS_DESC[i],
-			       CELL_SIZE,
-			       stats[i].enc.hw,
-			       CELL_SIZE,
-			       stats[i].dec.hw,
-			       CELL_SIZE,
-			       stats[i].enc.sw,
-			       CELL_SIZE,
-			       stats[i].dec.sw);
+			       CELL_SIZE, hw_enc,
+			       CELL_SIZE, hw_dec,
+			       CELL_SIZE, sw_enc,
+			       CELL_SIZE, sw_dec);
 		}
 	}
 }
 
 static int first_usr;
+
+static void print_json_string(const char *s)
+{
+	for (; *s != '\0'; s++) {
+		unsigned char c = (unsigned char)*s;
+		if (c == '"' || c == '\\')
+			printf("\\%c", c);
+		else if (c < 0x20)
+			printf("\\u%04x", c);
+		else
+			putchar(c);
+	}
+}
 
 void print_json_header()
 {
@@ -131,10 +155,18 @@ void print_json_header()
 	}
 
 	printf("{\n\t\"host\": {\n");
-	printf("\t\t\"nodename\": \"%s\",\n", un.nodename);
-	printf("\t\t\"sysname\": \"%s\",\n", un.sysname);
-	printf("\t\t\"release\": \"%s\",\n", un.release);
-	printf("\t\t\"machine\": \"%s\",\n", un.machine);
+	printf("\t\t\"nodename\": \""); 
+	print_json_string(un.nodename); 
+	printf("\",\n");
+	printf("\t\t\"sysname\": \"");  
+	print_json_string(un.sysname);  
+	printf("\",\n");
+	printf("\t\t\"release\": \"");  
+	print_json_string(un.release);  
+	printf("\",\n");
+	printf("\t\t\"machine\": \"");  
+	print_json_string(un.machine);  
+	printf("\",\n");
 	printf("\t\t\"date\": \"%s\"\n", timestamp);
 	printf("\t},\n\t\"users\": [");
 
@@ -148,7 +180,9 @@ void print_stats_json(stats_entry_t *stats, const char *usr)
 
 	if (!first_usr)
 		printf(",");
-	printf("\n\t\t{\n\t\t\t\"user\": \"%s\",\n", usr);
+	printf("\n\t\t{\n\t\t\t\"user\": \"");
+	print_json_string(usr);
+	printf("\",\n");
 	printf("\t\t\t\"functions\": [");
 
 	for (i = 0; i < ICA_NUM_STATS; ++i) {
@@ -175,17 +209,29 @@ void print_stats_json(stats_entry_t *stats, const char *usr)
 		if (i <= ICA_STATS_RSA_CRT_4096) {
 			printf("\t\t\t\t\t\"hw-crypt\": %lu,\n",
 			       stats[i].enc.hw);
+			if (stats[i].enc.hw == UINT64_MAX)
+				printf("\t\t\t\t\t\"hw-crypt-saturated\": true,\n");
 			printf("\t\t\t\t\t\"sw-crypt\": %lu\n",
 			       stats[i].enc.sw);
+			if (stats[i].enc.sw == UINT64_MAX)
+				printf(",\n\t\t\t\t\t\"sw-crypt-saturated\": true\n");
 		} else {
 			printf("\t\t\t\t\t\"hw-enc\": %lu,\n",
 			       stats[i].enc.hw);
+			if (stats[i].enc.hw == UINT64_MAX)
+				printf("\t\t\t\t\t\"hw-enc-saturated\": true,\n");
 			printf("\t\t\t\t\t\"sw-enc\": %lu,\n",
 			       stats[i].enc.sw);
+			if (stats[i].enc.sw == UINT64_MAX)
+				printf("\t\t\t\t\t\"sw-enc-saturated\": true,\n");
 			printf("\t\t\t\t\t\"hw-dec\": %lu,\n",
 			       stats[i].dec.hw);
+			if (stats[i].dec.hw == UINT64_MAX)
+				printf("\t\t\t\t\t\"hw-dec-saturated\": true,\n");
 			printf("\t\t\t\t\t\"sw-dec\": %lu\n",
 			       stats[i].dec.sw);
+			if (stats[i].dec.sw == UINT64_MAX)
+				printf(",\n\t\t\t\t\t\"sw-dec-saturated\": true\n");
 		}
 
 		printf("\t\t\t\t}");
