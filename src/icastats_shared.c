@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 #include <pwd.h>
 #include <sys/types.h>
@@ -28,6 +29,8 @@
 #include "init.h"
 
 #define NAME_LENGHT 20
+
+#define SAT_ADD(a, b) ((b) > UINT64_MAX - (a) ? UINT64_MAX : (a) + (b))
 
 static stats_entry_t *stats = NULL;
 
@@ -135,14 +138,14 @@ uint64_t stats_query(stats_entry_t *source, stats_fields_t field,
 
 	if (direction == ENCRYPT)
 		if (hardware == ALGO_HW)
-			return source[field].enc.hw;
+			return __sync_fetch_and_add(&source[field].enc.hw, 0);
 		else
-			return source[field].enc.sw;
+			return __sync_fetch_and_add(&source[field].enc.sw, 0);
 	else
 		if (hardware == ALGO_HW)
-			return source[field].dec.hw;
+			return __sync_fetch_and_add(&source[field].dec.hw, 0);
 		else
-			return source[field].dec.sw;
+			return __sync_fetch_and_add(&source[field].dec.sw, 0);
 }
 
 static uint64_t calc_summary(stats_entry_t *source,
@@ -150,10 +153,12 @@ static uint64_t calc_summary(stats_entry_t *source,
 		             int hardware, int direction)
 {
 	unsigned int i;
-	uint64_t sum = 0;
+	uint64_t sum = 0, val;
 
-	for (i = 0; i < num; i++)
-		sum += stats_query(source, start + i, hardware, direction);
+	for (i = 0; i < num; i++) {
+		val = stats_query(source, start + i, hardware, direction);
+		sum = SAT_ADD(sum, val);
+	}
 
 	return sum;
 }
@@ -278,11 +283,20 @@ int get_stats_sum(stats_entry_t *sum)
 				return 0;
 			}
 
-			for (i = 0; i<ICA_NUM_STATS; ++i) {
-				sum[i].enc.hw += tmp[i].enc.hw;
-				sum[i].enc.sw += tmp[i].enc.sw;
-				sum[i].dec.hw += tmp[i].dec.hw;
-				sum[i].dec.sw += tmp[i].dec.sw;
+			for (i = 0; i < ICA_NUM_STATS; ++i) {
+				uint64_t v;
+
+				v = __sync_fetch_and_add(&tmp[i].enc.hw, 0);
+				sum[i].enc.hw = SAT_ADD(sum[i].enc.hw, v);
+
+				v = __sync_fetch_and_add(&tmp[i].enc.sw, 0);
+				sum[i].enc.sw = SAT_ADD(sum[i].enc.sw, v);
+
+				v = __sync_fetch_and_add(&tmp[i].dec.hw, 0);
+				sum[i].dec.hw = SAT_ADD(sum[i].dec.hw, v);
+
+				v = __sync_fetch_and_add(&tmp[i].dec.sw, 0);
+				sum[i].dec.sw = SAT_ADD(sum[i].dec.sw, v);
 			}
 			munmap(tmp, STATS_SHM_SIZE);
 			close(fd);
@@ -347,6 +361,8 @@ char *get_next_usr()
 
 void stats_increment(stats_fields_t field, int hardware, int direction)
 {
+	uint64_t *counter, old, next, prev;
+
 	if (!ica_stats_enabled)
 		return;
 
@@ -355,14 +371,21 @@ void stats_increment(stats_fields_t field, int hardware, int direction)
 
 	if (direction == ENCRYPT)
 		if (hardware == ALGO_HW)
-			__sync_add_and_fetch(&stats[field].enc.hw, 1);
+			counter = &stats[field].enc.hw;
 		else
-			__sync_add_and_fetch(&stats[field].enc.sw, 1);
+			counter = &stats[field].enc.sw;
 	else
 		if (hardware == ALGO_HW)
-			__sync_add_and_fetch(&stats[field].dec.hw, 1);
+			counter = &stats[field].dec.hw;
 		else
-			__sync_add_and_fetch(&stats[field].dec.sw, 1);
+			counter = &stats[field].dec.sw;
+
+	old = *counter;
+	do {
+		prev = next = old;
+		if (next < UINT64_MAX)
+			next++;
+	} while ((old = __sync_val_compare_and_swap(counter, prev, next)) != prev);
 }
 #endif
 
@@ -371,10 +394,17 @@ void stats_increment(stats_fields_t field, int hardware, int direction)
  */
 void stats_reset()
 {
+	unsigned int i;
+
 	if (stats == NULL)
 		return;
 
-	memset(stats, 0, sizeof(stats_entry_t)*ICA_NUM_STATS);
+	for (i = 0; i < ICA_NUM_STATS; i++) {
+		__sync_and_and_fetch(&stats[i].enc.hw, 0);
+		__sync_and_and_fetch(&stats[i].enc.sw, 0);
+		__sync_and_and_fetch(&stats[i].dec.hw, 0);
+		__sync_and_and_fetch(&stats[i].dec.sw, 0);
+	}
 }
 
 
