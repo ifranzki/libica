@@ -166,7 +166,7 @@ static unsigned int check_des_parms(unsigned int mode,
 }
 
 static unsigned int check_aes_parms(unsigned int mode,
-				    unsigned int data_length,
+				    unsigned long data_length,
 				    const unsigned char *in_data,
 				    const unsigned char *iv,
 				    unsigned int key_length,
@@ -234,7 +234,7 @@ static unsigned int check_aes_parms(unsigned int mode,
 }
 
 static unsigned int check_cmac_parms(unsigned int block_size,
-				     const unsigned char *message, unsigned int message_length,
+				     const unsigned char *message, unsigned long message_length,
 				     unsigned char *mac, unsigned int mac_length,
 				     unsigned char *keys, unsigned int key_length,
 				     unsigned char *iv)
