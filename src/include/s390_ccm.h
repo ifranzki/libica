@@ -286,8 +286,8 @@ static inline unsigned int s390_ccm(unsigned int function_code,
 		      unsigned char *payload, unsigned long payload_length,
 		      unsigned char *ciphertext,
 		      const unsigned char *assoc_data, unsigned long assoc_data_length,
-		      const unsigned char *nonce, unsigned long nonce_length,
-		      unsigned char *mac, unsigned long mac_length,
+		      const unsigned char *nonce, unsigned int nonce_length,
+		      unsigned char *mac, unsigned int mac_length,
 		      unsigned char *key)
 {
 	unsigned char initial_ctr[AES_BLOCK_SIZE];
