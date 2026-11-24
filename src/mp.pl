@@ -36,7 +36,7 @@ LABEL	("ica_mp_mul512");
 	larl	("%r1","facility_bits");
 	lg	("%r0","16(%r1)");
 	tmhh	("%r0",0x300);			# check for vector enhancement
-	jz	(".Lmul512_novx");		# and packed decimal facilities
+	jno	(".Lmul512_novx");		# and packed decimal facilities (both)
 
 VERBATIM("#if !defined(__s390x__) && !defined(__s390x)\n");
 	std	("%f4","16*4+2*8($sp)");
@@ -301,7 +301,7 @@ LABEL	("ica_mp_sqr512");
 	larl	("%r1","facility_bits");
 	lg	("%r0","16(%r1)");
 	tmhh	("%r0",0x300);			# check for vector enhancement
-	jz	(".Lsqr512_novx");		# and packed decimal facilities
+	jno	(".Lsqr512_novx");		# and packed decimal facilities (both)
 
 VERBATIM("#if !defined(__s390x__) && !defined(__s390x)\n");
 	std	("%f4","16*4+2*8($sp)");
