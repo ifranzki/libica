@@ -777,6 +777,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(AES_CFB)) {
+		printf("Skipping AES-CFB test, because AES-CFB is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	for(iteration = 1; iteration <= NR_TESTS; iteration++)	{
 		rc = kat_aes_cfb(iteration);
 		if (rc) {

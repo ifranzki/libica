@@ -580,6 +580,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(AES_CBC)) {
+		printf("Skipping AES-CBC test, because AES-CBC is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	for(iteration = 1; iteration <= NR_TESTS; iteration++) {
 		rc = kat_aes_cbc(iteration);
 		if (rc) {

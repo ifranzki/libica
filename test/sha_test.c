@@ -148,6 +148,10 @@ int main(int argc, char *argv[])
 	     curr_test = curr_test->next, i++) {
 		V_(printf("test #%d : %u byte input message, ", i,
 		       curr_test->msg_length));
+		if (!libica_function_available(curr_test->type)) {
+			V_(printf("algorithm not available ... Skipped.\n"));
+			continue;
+		}
 		switch (curr_test->type) {
 		case SHA1:
 			V_(printf("SHA1 ...\n"));
@@ -223,6 +227,12 @@ int main(int argc, char *argv[])
 	if (queue.failed != 0) {
 		printf("SHA%s tests failed.\n", sha3_flag ? "3" : "");
 		return TEST_FAIL;
+	}
+
+	if (queue.passed == 0) {
+		printf("All SHA%s tests skipped (not available).\n",
+		       sha3_flag ? "3" : "");
+		return TEST_SKIP;
 	}
 
 	printf("All SHA%s tests passed.\n", sha3_flag ? "3" : "");

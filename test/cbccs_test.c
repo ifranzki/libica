@@ -510,6 +510,21 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(DES_CBC)) {
+		printf("Skipping DES-CBC test, because DES-CBC is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
+	if (!libica_function_available(DES3_CBC)) {
+		printf("Skipping 3DES-CBC test, because 3DES-CBC is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
+	if (!libica_function_available(AES_CBC)) {
+		printf("Skipping AES-CBC test, because AES-CBC is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	rc = 0;
 
 	/* known answer tests for AES128 */

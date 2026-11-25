@@ -721,6 +721,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(AES_CTR)) {
+		printf("Skipping AES-CTR test, because AES-CTR is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	if (!endless) {
 
 		// not endless mode

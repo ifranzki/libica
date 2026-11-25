@@ -158,6 +158,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(DES3_CBC)) {
+		printf("Skipping 3DES-CBC test, because 3DES-CBC is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	for(iteration = 1; iteration <= NR_RANDOM_TESTS; iteration++)	{
 		rc = random_3des_cbc(iteration, data_length);
 		if (rc) {

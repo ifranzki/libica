@@ -93,6 +93,39 @@ ops_per_sec(unsigned long long ops, unsigned long long usec)
 	return ops / ((long double)usec / 1000000ULL);
 }
 
+/*
+ * Returns 1 if libica reports the given mechanism (e.g. AES_ECB) as available
+ * on this machine, via CPACF, a crypto card or a software fallback.
+ * Returns 0 if it is not available, in which case calling the API would fail
+ * with ENODEV and the test has to be skipped.
+ */
+static inline int
+libica_function_available(unsigned int mech_mode_id)
+{
+	libica_func_list_element *list;
+	unsigned int count, i;
+	int available = 0;
+
+	if (ica_get_functionlist(NULL, &count) != 0)
+		return 0;
+
+	list = malloc(sizeof(libica_func_list_element) * count);
+	if (list == NULL)
+		return 0;
+
+	if (ica_get_functionlist(list, &count) == 0) {
+		for (i = 0; i < count; i++) {
+			if (list[i].mech_mode_id == mech_mode_id) {
+				available = list[i].flags != 0;
+				break;
+			}
+		}
+	}
+
+	free(list);
+	return available;
+}
+
 static inline int
 sha3_available(void)
 {

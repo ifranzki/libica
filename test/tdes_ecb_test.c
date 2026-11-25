@@ -292,6 +292,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(DES3_ECB)) {
+		printf("Skipping 3DES-ECB test, because 3DES-ECB is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	for(iteration = 1; iteration <= NR_TESTS; iteration++)	{
 		rc = kat_3des_ecb(iteration);
 		if (rc) {

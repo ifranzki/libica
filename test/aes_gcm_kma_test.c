@@ -898,6 +898,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(AES_GCM_KMA)) {
+		printf("Skipping AES-GCM-KMA test, because AES-GCM-KMA is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	for(iteration = 0; iteration < NUM_GCM_TESTS; iteration++)	{
 
 		rc = test_gcm_kat(iteration);

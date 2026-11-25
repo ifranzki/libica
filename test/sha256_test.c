@@ -186,6 +186,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(SHA256)) {
+		printf("Skipping SHA-256 test, because SHA-256 is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	rc = new_api_sha256_test();
 	if (rc) {
 		printf("new_api_sha256_test: returned rc = %i\n", rc);

@@ -137,6 +137,11 @@ int main(int argc, char **argv)
 #endif /* ICA_FIPS */
 
 	set_verbosity(argc, argv);
+	if (!libica_function_available(DES3_CTR)) {
+		printf("Skipping 3DES-CTR test, because 3DES-CTR is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	if (argc > 1) {
 		if (strstr(argv[1], "endless"))
 			endless = 1;

@@ -146,6 +146,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(DES_CTR)) {
+		printf("Skipping DES-CTR test, because DES-CTR is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	if (endless) {
 		while (1) {
 			VV_(printf("i = %i\n", i));

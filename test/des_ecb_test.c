@@ -132,6 +132,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(DES_ECB)) {
+		printf("Skipping DES-ECB test, because DES-ECB is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 #ifdef ICA_FIPS
 	if (ica_fips_status() & ICA_FIPS_MODE) {
 		printf("All DES-ECB tests skipped."

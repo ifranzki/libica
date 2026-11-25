@@ -301,6 +301,11 @@ int main(int argc, char **argv)
 
 	set_verbosity(argc, argv);
 
+	if (!libica_function_available(AES_CMAC)) {
+		printf("Skipping AES-CMAC test, because AES-CMAC is not available on this machine.\n");
+		return TEST_SKIP;
+	}
+
 	rc = api_cmac_test();
 	if (rc) {
 		printf("api_cmac_test failed with rc = %i\n", rc);
