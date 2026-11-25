@@ -114,7 +114,7 @@ static inline int s390_ghash_hw(unsigned int fc,
 static inline int s390_ghash(const unsigned char *in_data, unsigned long data_length,
 		      const unsigned char *key, unsigned char *iv)
 {
-	if (!s390_kimd_functions[GHASH].enabled)
+	if (!*s390_kimd_functions[GHASH].enabled)
 		return ENODEV;
 
 	return s390_ghash_hw(s390_kimd_functions[GHASH].hw_fc,
