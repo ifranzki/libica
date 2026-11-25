@@ -180,8 +180,8 @@ static inline int s390_cmac(unsigned long fc,
 {
 	int rc = ENODEV;
 
-	if (*s390_msa4_functions[fc].enabled)
-		rc = s390_cmac_hw(s390_msa4_functions[fc].hw_fc,
+	if (*s390_kmac_functions[fc].enabled)
+		rc = s390_cmac_hw(s390_kmac_functions[fc].hw_fc,
 				  message, message_length,
 				  key_length, key,
 				  mac_length, mac,

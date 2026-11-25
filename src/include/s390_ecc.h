@@ -396,7 +396,7 @@ static inline int hash_length_valid(unsigned int length)
 	}
 }
 
-extern unsigned int msa9_switch, ecc_via_online_card;
+extern unsigned int pcc_switch, kdsa_switch, ecc_via_online_card;
 
 /**
  * returns 1 if the curve specified by nid is supported by CCA cards,
@@ -441,7 +441,8 @@ static inline int curve_supported_via_cpacf(unsigned int nid)
 	(void)(nid);
 	return 0;
 #else
-	if (!msa9_switch)
+	/* ECDSA uses KDSA, ECDH and EC key generation use PCC. */
+	if (!pcc_switch && !kdsa_switch)
 		return 0;
 
 	switch (nid) {

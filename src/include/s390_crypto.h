@@ -79,14 +79,18 @@ extern int openssl3_initialized;
 	(((unsigned char *)(mask))[((function) & 0x7F) >> 3] & \
 	(0x80 >> ((function) & 0x07)))
 
-#define KM	1
+#define KM	1	/* KM (ECB, XTS), independent query */
 #define KMC	2
 #define KIMD	3
-#define MSA4	4
+#define KMF	4	/* KMF (CFB), independent query */
 #define ADAPTER 5
 #define PPNO	6
 #define MSA8	7
 #define MSA9	8
+#define KMO	9	/* KMO (OFB), independent query */
+#define KMCTR	10	/* KMCTR (CTR), independent query */
+#define KMAC	11	/* KMAC (CMAC), independent query */
+#define AES_COMBINED 12	/* modes built from several instructions (CCM, GCM) */
 
 enum s390_crypto_instruction {
 	S390_CRYPTO_DIRECTION_MASK = 0x80,
@@ -182,8 +186,12 @@ extern unsigned long long facility_bits[3];
 extern unsigned int sha1_switch, sha256_switch, sha512_switch, sha3_switch, des_switch,
 	     tdes_switch, aes128_switch, aes192_switch, aes256_switch,
 	     prng_switch, tdea128_switch, tdea192_switch, sha512_drng_switch,
-	     msa4_switch, msa5_switch, msa8_switch, trng_switch, msa9_switch,
-		 ecc_via_online_card, any_card_online;
+	     msa5_switch, msa8_switch, trng_switch,
+	     pcc_switch, kdsa_switch,
+	     kmf_switch, kmo_switch, kmctr_switch, kmac_switch,
+	     km_des_switch, km_tdes_switch, km_aes128_switch, km_aes192_switch,
+	     km_aes256_switch, km_xts128_switch, km_xts256_switch, ghash_switch,
+	     ecc_via_online_card, any_card_online;
 
 typedef struct {
 	unsigned int dummy_fc;
@@ -232,8 +240,12 @@ typedef enum {
 	TRNG
 } ppno_functions_t;
 
+extern s390_supported_function_t s390_km_functions[];	/* ECB, XTS (KM) */
 extern s390_supported_function_t s390_kmc_functions[];
-extern s390_supported_function_t s390_msa4_functions[];
+extern s390_supported_function_t s390_kmf_functions[];	/* CFB (KMF), .enabled -> &kmf_switch */
+extern s390_supported_function_t s390_kmo_functions[];	/* OFB (KMO), .enabled -> &kmo_switch */
+extern s390_supported_function_t s390_kmctr_functions[];	/* CTR (KMCTR), .enabled -> &kmctr_switch */
+extern s390_supported_function_t s390_kmac_functions[];	/* CMAC (KMAC), .enabled -> &kmac_switch */
 extern s390_supported_function_t s390_pcc_functions[];
 extern s390_supported_function_t s390_kma_functions[];
 extern s390_supported_function_t s390_kimd_functions[];

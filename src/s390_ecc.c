@@ -916,7 +916,7 @@ unsigned int ecdh_hw(ica_adapter_handle_t adapter_handle,
 	ECDH_REPLY* reply_p;
 	int privlen = privlen_from_nid(privkey_A->nid);
 
-	if (msa9_switch && !ica_offload_enabled) {
+	if (pcc_switch && !ica_offload_enabled) {
 		rc = scalar_mul_cpacf(z, NULL, privkey_A->D, pubkey_B->X,
 				      pubkey_B->Y, privkey_A->nid);
 		if (rc != EINVAL) /* EINVAL: curve not supported by cpacf */
@@ -1388,7 +1388,7 @@ unsigned int ecdsa_sign_hw(ica_adapter_handle_t adapter_handle,
 	unsigned char X[MAX_ECC_PRIV_SIZE];
 	unsigned char Y[MAX_ECC_PRIV_SIZE];
 
-	if (msa9_switch && !ica_offload_enabled) {
+	if (kdsa_switch && !ica_offload_enabled) {
 		rc = ecdsa_sign_cpacf(privkey, hash, hash_length, signature, k);
 		if (rc != EINVAL) /* EINVAL: curve not supported by cpacf */
 			return rc;
@@ -1955,7 +1955,7 @@ unsigned int ecdsa_verify_hw(ica_adapter_handle_t adapter_handle,
 	struct ica_xcRB xcrb;
 	ECDSA_VERIFY_REPLY* reply_p;
 
-	if (msa9_switch && !ica_offload_enabled) {
+	if (kdsa_switch && !ica_offload_enabled) {
 		rc = ecdsa_verify_cpacf(pubkey, hash, hash_length, signature);
 		if (rc != EINVAL) /* EINVAL: curve not supported by cpacf */
 			return rc;
@@ -2375,7 +2375,7 @@ unsigned int eckeygen_hw(ica_adapter_handle_t adapter_handle, ICA_EC_KEY *key)
 	ECC_PUBLIC_KEY_TOKEN* pub_p;
 	unsigned char* p;
 
-	if (msa9_switch) {
+	if (pcc_switch) {
 		rc = eckeygen_cpacf(key);
 		if (rc != EINVAL)	/* curve not supported by cpacf */
 			return rc;
@@ -3228,7 +3228,7 @@ int main(void)
 	printf("Skipping EC internal test, because CPACF support disabled via config option.\n");
 	exit(TEST_SKIP);
 #else
-	if (!msa9_switch)
+	if (!pcc_switch || !kdsa_switch)
 		exit(TEST_SKIP);
 
 	/* test exit on first failure */

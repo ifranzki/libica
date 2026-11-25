@@ -306,7 +306,7 @@ static inline int s390_des_cbccs(unsigned int fc, const unsigned char *in_data,
 			  unsigned char *key,
 			  unsigned char *iv, unsigned int variant)
 {
-	if (s390_msa4_functions[fc].hw_fc & S390_CRYPTO_DIRECTION_MASK)
+	if (s390_kmc_functions[fc].hw_fc & S390_CRYPTO_DIRECTION_MASK)
 		return s390_des_cbccs_dec(fc, in_data, out_data, data_length,
 					  key, iv, variant);
 	else
@@ -319,7 +319,7 @@ static inline int s390_aes_cbccs(unsigned int fc, const unsigned char *in_data,
 			  unsigned char *key, unsigned char *iv,
 			  unsigned int variant)
 {
-	if (s390_msa4_functions[fc].hw_fc & S390_CRYPTO_DIRECTION_MASK)
+	if (s390_kmc_functions[fc].hw_fc & S390_CRYPTO_DIRECTION_MASK)
 		return s390_aes_cbccs_dec(fc, in_data, out_data, data_length,
 					  key, iv, variant);
 	else

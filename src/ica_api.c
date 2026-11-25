@@ -1546,7 +1546,7 @@ int ica_ec_key_generate(ica_adapter_handle_t adapter_handle, ICA_EC_KEY *key)
 	switch (icapath) {
 	case 1: /* hw only */
 		hardware = ALGO_HW;
-		if (ecc_via_online_card || msa9_switch)
+		if (ecc_via_online_card || pcc_switch)
 			rc = eckeygen_hw(adapter_handle, key);
 		else
 			rc = ENODEV;
@@ -1624,7 +1624,7 @@ int ica_ecdh_derive_secret(ica_adapter_handle_t adapter_handle,
 	switch (icapath) {
 	case 1: /* hw only */
 		hardware = ALGO_HW;
-		if (ecc_via_online_card || msa9_switch)
+		if (ecc_via_online_card || pcc_switch)
 			rc = ecdh_hw(adapter_handle, privkey_A, pubkey_B, z);
 		else
 			rc = ENODEV;
@@ -1697,7 +1697,7 @@ int ica_ecdsa_sign_ex_internal(ica_adapter_handle_t adapter_handle,
 	switch (icapath) {
 	case 1: /* hw only */
 		hardware = ALGO_HW;
-		if (ecc_via_online_card || msa9_switch)
+		if (ecc_via_online_card || kdsa_switch)
 			rc = ecdsa_sign_hw(adapter_handle, privkey, hash, hash_length,
 						signature, k);
 		else
@@ -1798,7 +1798,7 @@ int ica_ecdsa_verify(ica_adapter_handle_t adapter_handle,
 	switch (icapath) {
 	case 1: /* hw only */
 		hardware = ALGO_HW;
-		if (ecc_via_online_card || msa9_switch)
+		if (ecc_via_online_card || kdsa_switch)
 			rc = ecdsa_verify_hw(adapter_handle, pubkey, hash, hash_length, signature);
 		else
 			rc = ENODEV;
@@ -1878,6 +1878,15 @@ static inline int check_fips_ed_x(void)
 	return 0;
 #endif
 }
+
+/*
+ * PCC and KDSA are queried independently, so each operation checks the switch
+ * of the instruction it executes: X25519/X448 only use PCC, Ed25519/Ed448 use
+ * KDSA for sign/verify and PCC to derive the public key.
+ * The Ed25519/Ed448 functions that do not execute an instruction themselves
+ * only check that at least one of them is available.
+ */
+#define ED_CPACF_AVAILABLE	(pcc_switch || kdsa_switch)
 #endif
 
 
@@ -1887,7 +1896,7 @@ int ica_x25519_ctx_new(ICA_X25519_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL)
+	if (!pcc_switch || ctx == NULL)
 		return -1;
 
 	*ctx = calloc(1, sizeof(**ctx));
@@ -1901,7 +1910,7 @@ int ica_x448_ctx_new(ICA_X448_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL)
+	if (!pcc_switch || ctx == NULL)
 		return -1;
 
 	*ctx = calloc(1, sizeof(**ctx));
@@ -1915,7 +1924,7 @@ int ica_ed25519_ctx_new(ICA_ED25519_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL)
+	if (!ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	*ctx = calloc(1, sizeof(**ctx));
@@ -1929,7 +1938,7 @@ int ica_ed448_ctx_new(ICA_ED448_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL)
+	if (!ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	*ctx = calloc(1, sizeof(**ctx));
@@ -1947,7 +1956,7 @@ int ica_x25519_key_set(ICA_X25519_CTX *ctx,
 	UNUSED(pub);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -1976,7 +1985,7 @@ int ica_x448_key_set(ICA_X448_CTX *ctx,
 	UNUSED(pub);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2005,7 +2014,7 @@ int ica_ed25519_key_set(ICA_ED25519_CTX *ctx,
 	UNUSED(pub);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2034,7 +2043,7 @@ int ica_ed448_key_set(ICA_ED448_CTX *ctx,
 	UNUSED(pub);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2069,7 +2078,7 @@ int ica_x25519_key_get(ICA_X25519_CTX *ctx, unsigned char priv[32],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2111,7 +2120,7 @@ int ica_x448_key_get(ICA_X448_CTX *ctx, unsigned char priv[56],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2153,7 +2162,7 @@ int ica_ed25519_key_get(ICA_ED25519_CTX *ctx, unsigned char priv[32],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2166,7 +2175,7 @@ int ica_ed25519_key_get(ICA_ED25519_CTX *ctx, unsigned char priv[32],
 
 	if (pub != NULL) {
 		if (!ctx->pub_init) {
-			if (!ctx->priv_init)
+			if (!ctx->priv_init || !pcc_switch)
 				return -1;
 
 			rc = ed25519_derive_pub(ctx->verify_param.pub,
@@ -2198,7 +2207,7 @@ int ica_ed448_key_get(ICA_ED448_CTX *ctx, unsigned char priv[57],
 	unsigned char pub64[64];
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	if (priv != NULL) {
@@ -2211,7 +2220,7 @@ int ica_ed448_key_get(ICA_ED448_CTX *ctx, unsigned char priv[57],
 
 	if (pub != NULL) {
 		if (!ctx->pub_init) {
-			if (!ctx->priv_init)
+			if (!ctx->priv_init || !pcc_switch)
 				return -1;
 
 			rc = ed448_derive_pub(ctx->verify_param.pub + 64 - 57,
@@ -2244,7 +2253,7 @@ int ica_x25519_derive(ICA_X25519_CTX *ctx,
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL
 	    || !ctx->priv_init || shared_secret == NULL || peer_pub == NULL)
 		return -1;
 
@@ -2268,7 +2277,7 @@ int ica_x448_derive(ICA_X448_CTX *ctx,
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL
 	    || !ctx->priv_init || shared_secret == NULL || peer_pub == NULL)
 		return -1;
 
@@ -2291,7 +2300,7 @@ int ica_ed25519_sign(ICA_ED25519_CTX *ctx, unsigned char sig[64],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL
+	if (check_fips_ed_x() || !kdsa_switch || ctx == NULL
 	    || !ctx->priv_init || sig == NULL || (msg == NULL && msglen != 0))
 		return -1;
 
@@ -2323,7 +2332,7 @@ int ica_ed448_sign(ICA_ED448_CTX *ctx, unsigned char sig[114],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL
+	if (check_fips_ed_x() || !kdsa_switch || ctx == NULL
 	    || !ctx->priv_init || sig == NULL || (msg == NULL && msglen != 0))
 		return -1;
 
@@ -2358,12 +2367,12 @@ int ica_ed25519_verify(ICA_ED25519_CTX *ctx, const unsigned char sig[64],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL || sig == NULL
+	if (check_fips_ed_x() || !kdsa_switch || ctx == NULL || sig == NULL
 	    || (msg == NULL && msglen != 0))
 		return -1;
 
 	if (!ctx->pub_init) {
-		if (!ctx->priv_init)
+		if (!ctx->priv_init || !pcc_switch)
 			return -1;
 
 		rc = ed25519_derive_pub(ctx->verify_param.pub,
@@ -2401,12 +2410,12 @@ int ica_ed448_verify(ICA_ED448_CTX *ctx, const unsigned char sig[114],
 #else
 	int rc;
 
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL || sig == NULL
+	if (check_fips_ed_x() || !kdsa_switch || ctx == NULL || sig == NULL
 	    || (msg == NULL && msglen != 0))
 		return -1;
 
 	if (!ctx->pub_init) {
-		if (!ctx->priv_init)
+		if (!ctx->priv_init || !pcc_switch)
 			return -1;
 
 		rc = ed448_derive_pub(ctx->verify_param.pub + 64 - 57,
@@ -2443,7 +2452,7 @@ int ica_x25519_ctx_del(ICA_X25519_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL || *ctx == NULL)
+	if (!pcc_switch || ctx == NULL || *ctx == NULL)
 		return -1;
 
 	OPENSSL_cleanse(*ctx, sizeof(**ctx));
@@ -2459,7 +2468,7 @@ int ica_x448_ctx_del(ICA_X448_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL || *ctx == NULL)
+	if (!pcc_switch || ctx == NULL || *ctx == NULL)
 		return -1;
 
 	OPENSSL_cleanse(*ctx, sizeof(**ctx));
@@ -2475,7 +2484,7 @@ int ica_ed25519_ctx_del(ICA_ED25519_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL || *ctx == NULL)
+	if (!ED_CPACF_AVAILABLE || ctx == NULL || *ctx == NULL)
 		return -1;
 
 	OPENSSL_cleanse(*ctx, sizeof(**ctx));
@@ -2491,7 +2500,7 @@ int ica_ed448_ctx_del(ICA_ED448_CTX **ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (!msa9_switch || ctx == NULL || *ctx == NULL)
+	if (!ED_CPACF_AVAILABLE || ctx == NULL || *ctx == NULL)
 		return -1;
 
 	OPENSSL_cleanse(*ctx, sizeof(**ctx));
@@ -2507,7 +2516,7 @@ int ica_x25519_key_gen(ICA_X25519_CTX *ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL)
 		return -1;
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -2527,7 +2536,7 @@ int ica_x448_key_gen(ICA_X448_CTX *ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !pcc_switch || ctx == NULL)
 		return -1;
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -2547,7 +2556,7 @@ int ica_ed25519_key_gen(ICA_ED25519_CTX *ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -2567,7 +2576,7 @@ int ica_ed448_key_gen(ICA_ED448_CTX *ctx)
 	UNUSED(ctx);
 	return EPERM;
 #else
-	if (check_fips_ed_x() || !msa9_switch || ctx == NULL)
+	if (check_fips_ed_x() || !ED_CPACF_AVAILABLE || ctx == NULL)
 		return -1;
 
 	memset(ctx, 0, sizeof(*ctx));

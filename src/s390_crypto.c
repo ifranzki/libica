@@ -34,8 +34,12 @@ unsigned long long facility_bits[3];
 unsigned int sha1_switch, sha256_switch, sha512_switch, sha3_switch, des_switch,
 	     tdes_switch, aes128_switch, aes192_switch, aes256_switch,
 	     prng_switch, tdea128_switch, tdea192_switch, sha512_drng_switch,
-	     msa4_switch, msa5_switch, msa8_switch, trng_switch, msa9_switch,
-		 ecc_via_online_card, any_card_online;
+	     msa5_switch, msa8_switch, trng_switch,
+	     pcc_switch, kdsa_switch,
+	     kmf_switch, kmo_switch, kmctr_switch, kmac_switch,
+	     km_des_switch, km_tdes_switch, km_aes128_switch, km_aes192_switch,
+	     km_aes256_switch, km_xts128_switch, km_xts256_switch, ghash_switch,
+	     ecc_via_online_card, any_card_online;
 int msa;
 
 #define CARD_AVAILABLE		0x01
@@ -55,11 +59,46 @@ s390_supported_function_t s390_kimd_functions[] = {
 	{SHA_3_512, S390_CRYPTO_SHA_3_512, &sha3_switch},
 	{SHAKE_128, S390_CRYPTO_SHAKE_128, &sha3_switch},
 	{SHAKE_256, S390_CRYPTO_SHAKE_256, &sha3_switch},
-	{GHASH, S390_CRYPTO_GHASH, &msa4_switch},
+	{GHASH, S390_CRYPTO_GHASH, &ghash_switch},
 	{SHA_512_224, S390_CRYPTO_SHA_512, &sha512_switch},
 	{SHA_512_256, S390_CRYPTO_SHA_512, &sha512_switch}
 };
 
+/*
+ * Each of the s390_*_functions tables below is queried separately (see
+ * set_switches()), and its .enabled pointers point at a switch that is set only
+ * if the CPACF query of that very instruction reports the function code.
+ * An environment (e.g. QEMU) may implement some of the instructions but not
+ * others, so no switch may be derived from the query of another instruction.
+ *
+ * The cipher tables are indexed by the function code enumeration from
+ * ica_api.h (DEA_ENCRYPT, ...).
+ */
+
+/*
+ * KM (ECB and XTS, opcode 0xb92e).
+ */
+s390_supported_function_t s390_km_functions[] = {
+	{DEA_ENCRYPT, S390_CRYPTO_DEA_ENCRYPT, &km_des_switch},
+	{DEA_DECRYPT, S390_CRYPTO_DEA_DECRYPT, &km_des_switch},
+	{TDEA_192_ENCRYPT, S390_CRYPTO_TDEA_192_ENCRYPT, &km_tdes_switch},
+	{TDEA_192_DECRYPT, S390_CRYPTO_TDEA_192_DECRYPT, &km_tdes_switch},
+	{AES_128_ENCRYPT, S390_CRYPTO_AES_128_ENCRYPT, &km_aes128_switch},
+	{AES_128_DECRYPT, S390_CRYPTO_AES_128_DECRYPT, &km_aes128_switch},
+	{AES_192_ENCRYPT, S390_CRYPTO_AES_192_ENCRYPT, &km_aes192_switch},
+	{AES_192_DECRYPT, S390_CRYPTO_AES_192_DECRYPT, &km_aes192_switch},
+	{AES_256_ENCRYPT, S390_CRYPTO_AES_256_ENCRYPT, &km_aes256_switch},
+	{AES_256_DECRYPT, S390_CRYPTO_AES_256_DECRYPT, &km_aes256_switch},
+	{AES_128_XTS_ENCRYPT, S390_CRYPTO_AES_128_XTS_ENCRYPT, &km_xts128_switch},
+	{AES_128_XTS_DECRYPT, S390_CRYPTO_AES_128_XTS_DECRYPT, &km_xts128_switch},
+	{AES_256_XTS_ENCRYPT, S390_CRYPTO_AES_256_XTS_ENCRYPT, &km_xts256_switch},
+	{AES_256_XTS_DECRYPT, S390_CRYPTO_AES_256_XTS_DECRYPT, &km_xts256_switch}
+};
+
+/*
+ * KMC (CBC and PRNG, opcode 0xb92f).
+ * XTS is a KM function, so there are no XTS entries in this table.
+ */
 s390_supported_function_t s390_kmc_functions[] = {
 	{DEA_ENCRYPT, S390_CRYPTO_DEA_ENCRYPT, &des_switch},
 	{DEA_DECRYPT, S390_CRYPTO_DEA_DECRYPT, &des_switch},
@@ -71,44 +110,64 @@ s390_supported_function_t s390_kmc_functions[] = {
 	{AES_192_DECRYPT, S390_CRYPTO_AES_192_DECRYPT, &aes192_switch},
 	{AES_256_ENCRYPT, S390_CRYPTO_AES_256_ENCRYPT, &aes256_switch},
 	{AES_256_DECRYPT, S390_CRYPTO_AES_256_DECRYPT, &aes256_switch},
-	{AES_128_XTS_ENCRYPT, S390_CRYPTO_AES_128_XTS_ENCRYPT, &msa4_switch},
-	{AES_128_XTS_DECRYPT, S390_CRYPTO_AES_128_XTS_DECRYPT, &msa4_switch},
-	{AES_256_XTS_ENCRYPT, S390_CRYPTO_AES_256_XTS_ENCRYPT, &msa4_switch},
-	{AES_256_XTS_DECRYPT, S390_CRYPTO_AES_256_XTS_DECRYPT, &msa4_switch},
 	{PRNG, S390_CRYPTO_PRNG, &prng_switch}
 };
 
-s390_supported_function_t s390_msa4_functions[] = {
-	{DEA_ENCRYPT, S390_CRYPTO_DEA_ENCRYPT, &msa4_switch},
-	{DEA_DECRYPT, S390_CRYPTO_DEA_DECRYPT, &msa4_switch},
-	{TDEA_192_ENCRYPT, S390_CRYPTO_TDEA_192_ENCRYPT, &msa4_switch},
-	{TDEA_192_DECRYPT, S390_CRYPTO_TDEA_192_DECRYPT, &msa4_switch},
-	{AES_128_ENCRYPT, S390_CRYPTO_AES_128_ENCRYPT, &msa4_switch},
-	{AES_128_DECRYPT, S390_CRYPTO_AES_128_DECRYPT, &msa4_switch},
-	{AES_192_ENCRYPT, S390_CRYPTO_AES_192_ENCRYPT, &msa4_switch},
-	{AES_192_DECRYPT, S390_CRYPTO_AES_192_DECRYPT, &msa4_switch},
-	{AES_256_ENCRYPT, S390_CRYPTO_AES_256_ENCRYPT, &msa4_switch},
-	{AES_256_DECRYPT, S390_CRYPTO_AES_256_DECRYPT, &msa4_switch},
-	{AES_128_XTS_ENCRYPT, S390_CRYPTO_AES_128_XTS_ENCRYPT, &msa4_switch},
-	{AES_128_XTS_DECRYPT, S390_CRYPTO_AES_128_XTS_DECRYPT, &msa4_switch},
-	{AES_256_XTS_ENCRYPT, S390_CRYPTO_AES_256_XTS_ENCRYPT, &msa4_switch},
-	{AES_256_XTS_DECRYPT, S390_CRYPTO_AES_256_XTS_DECRYPT, &msa4_switch}
+/*
+ * Function table for an instruction that supports the DES, 3DES and AES
+ * function codes with a common switch: all of them are queried together.
+ * It is used for CFB (KMF), OFB (KMO), CTR (KMCTR) and CMAC (KMAC).
+ */
+#define S390_CIPHER_FUNCTIONS(sw) \
+	{DEA_ENCRYPT, S390_CRYPTO_DEA_ENCRYPT, &(sw)}, \
+	{DEA_DECRYPT, S390_CRYPTO_DEA_DECRYPT, &(sw)}, \
+	{TDEA_192_ENCRYPT, S390_CRYPTO_TDEA_192_ENCRYPT, &(sw)}, \
+	{TDEA_192_DECRYPT, S390_CRYPTO_TDEA_192_DECRYPT, &(sw)}, \
+	{AES_128_ENCRYPT, S390_CRYPTO_AES_128_ENCRYPT, &(sw)}, \
+	{AES_128_DECRYPT, S390_CRYPTO_AES_128_DECRYPT, &(sw)}, \
+	{AES_192_ENCRYPT, S390_CRYPTO_AES_192_ENCRYPT, &(sw)}, \
+	{AES_192_DECRYPT, S390_CRYPTO_AES_192_DECRYPT, &(sw)}, \
+	{AES_256_ENCRYPT, S390_CRYPTO_AES_256_ENCRYPT, &(sw)}, \
+	{AES_256_DECRYPT, S390_CRYPTO_AES_256_DECRYPT, &(sw)}
+
+/* CFB (KMF, opcode 0xb92a) */
+s390_supported_function_t s390_kmf_functions[] = {
+	S390_CIPHER_FUNCTIONS(kmf_switch)
 };
 
+/* OFB (KMO, opcode 0xb92b) */
+s390_supported_function_t s390_kmo_functions[] = {
+	S390_CIPHER_FUNCTIONS(kmo_switch)
+};
+
+/* CTR (KMCTR, opcode 0xb92d) */
+s390_supported_function_t s390_kmctr_functions[] = {
+	S390_CIPHER_FUNCTIONS(kmctr_switch)
+};
+
+/* CMAC (KMAC, opcode 0xb91e) */
+s390_supported_function_t s390_kmac_functions[] = {
+	S390_CIPHER_FUNCTIONS(kmac_switch)
+};
+
+/*
+ * PCC. Entries with hw_fc == 0 are placeholders that only keep the index
+ * layout, they are skipped when evaluating the query result.
+ */
 s390_supported_function_t s390_pcc_functions[] = {
-	{0, 0, &msa4_switch},	/* CMAC_AES not supported */
-	{0, 0, &msa4_switch},
-	{0, 0, &msa4_switch},
-	{0, 0, &msa4_switch},
-	{0, 0, &msa4_switch},
-	{0, 0, &msa4_switch},
-	{SCALAR_MULTIPLY_P256, S390_CRYPTO_SCALAR_MULTIPLY_P256, &msa9_switch},
-	{SCALAR_MULTIPLY_P384, S390_CRYPTO_SCALAR_MULTIPLY_P384, &msa9_switch},
-	{SCALAR_MULTIPLY_P521, S390_CRYPTO_SCALAR_MULTIPLY_P521, &msa9_switch},
-	{SCALAR_MULTIPLY_ED25519, S390_CRYPTO_SCALAR_MULTIPLY_ED25519, &msa9_switch},
-	{SCALAR_MULTIPLY_ED448, S390_CRYPTO_SCALAR_MULTIPLY_ED448, &msa9_switch},
-	{SCALAR_MULTIPLY_X25519, S390_CRYPTO_SCALAR_MULTIPLY_X25519, &msa9_switch},
-	{SCALAR_MULTIPLY_X448, S390_CRYPTO_SCALAR_MULTIPLY_X448, &msa9_switch},
+	{0, 0, &pcc_switch},	/* CMAC_AES not supported */
+	{0, 0, &pcc_switch},
+	{0, 0, &pcc_switch},
+	{0, 0, &pcc_switch},
+	{0, 0, &pcc_switch},
+	{0, 0, &pcc_switch},
+	{SCALAR_MULTIPLY_P256, S390_CRYPTO_SCALAR_MULTIPLY_P256, &pcc_switch},
+	{SCALAR_MULTIPLY_P384, S390_CRYPTO_SCALAR_MULTIPLY_P384, &pcc_switch},
+	{SCALAR_MULTIPLY_P521, S390_CRYPTO_SCALAR_MULTIPLY_P521, &pcc_switch},
+	{SCALAR_MULTIPLY_ED25519, S390_CRYPTO_SCALAR_MULTIPLY_ED25519, &pcc_switch},
+	{SCALAR_MULTIPLY_ED448, S390_CRYPTO_SCALAR_MULTIPLY_ED448, &pcc_switch},
+	{SCALAR_MULTIPLY_X25519, S390_CRYPTO_SCALAR_MULTIPLY_X25519, &pcc_switch},
+	{SCALAR_MULTIPLY_X448, S390_CRYPTO_SCALAR_MULTIPLY_X448, &pcc_switch},
 };
 
 s390_supported_function_t s390_ppno_functions[] = {
@@ -131,16 +190,16 @@ s390_supported_function_t s390_kma_functions[] = {
 };
 
 s390_supported_function_t s390_kdsa_functions[] = {
-	{ECDSA_VERIFY_P256, S390_CRYPTO_ECDSA_VERIFY_P256, &msa9_switch},
-	{ECDSA_VERIFY_P384, S390_CRYPTO_ECDSA_VERIFY_P384, &msa9_switch},
-	{ECDSA_VERIFY_P521, S390_CRYPTO_ECDSA_VERIFY_P521, &msa9_switch},
-	{ECDSA_SIGN_P256, S390_CRYPTO_ECDSA_SIGN_P256, &msa9_switch},
-	{ECDSA_SIGN_P384, S390_CRYPTO_ECDSA_SIGN_P384, &msa9_switch},
-	{ECDSA_SIGN_P521, S390_CRYPTO_ECDSA_SIGN_P521, &msa9_switch},
-	{EDDSA_VERIFY_ED25519, S390_CRYPTO_EDDSA_VERIFY_ED25519, &msa9_switch},
-	{EDDSA_VERIFY_ED448, S390_CRYPTO_EDDSA_VERIFY_ED448, &msa9_switch},
-	{EDDSA_SIGN_ED25519, S390_CRYPTO_EDDSA_SIGN_ED25519, &msa9_switch},
-	{EDDSA_SIGN_ED448, S390_CRYPTO_EDDSA_SIGN_ED448, &msa9_switch},
+	{ECDSA_VERIFY_P256, S390_CRYPTO_ECDSA_VERIFY_P256, &kdsa_switch},
+	{ECDSA_VERIFY_P384, S390_CRYPTO_ECDSA_VERIFY_P384, &kdsa_switch},
+	{ECDSA_VERIFY_P521, S390_CRYPTO_ECDSA_VERIFY_P521, &kdsa_switch},
+	{ECDSA_SIGN_P256, S390_CRYPTO_ECDSA_SIGN_P256, &kdsa_switch},
+	{ECDSA_SIGN_P384, S390_CRYPTO_ECDSA_SIGN_P384, &kdsa_switch},
+	{ECDSA_SIGN_P521, S390_CRYPTO_ECDSA_SIGN_P521, &kdsa_switch},
+	{EDDSA_VERIFY_ED25519, S390_CRYPTO_EDDSA_VERIFY_ED25519, &kdsa_switch},
+	{EDDSA_VERIFY_ED448, S390_CRYPTO_EDDSA_VERIFY_ED448, &kdsa_switch},
+	{EDDSA_SIGN_ED25519, S390_CRYPTO_EDDSA_SIGN_ED25519, &kdsa_switch},
+	{EDDSA_SIGN_ED448, S390_CRYPTO_EDDSA_SIGN_ED448, &kdsa_switch},
 };
 
 static int read_cpuinfo(void)
@@ -247,6 +306,18 @@ static void set_switches(int msa)
 	memset(&oldact, 0, sizeof(oldact));
 	memset(&oldset, 0, sizeof(oldset));
 
+	/* km query (ECB, XTS) */
+	memset(mask, 0, sizeof(mask));
+	if (msa) {
+		if (begin_sigill_section(&oldact, &oldset) == 0)
+			s390_km(S390_CRYPTO_QUERY, mask, (void *) 0, (void *) 0, 0);
+		end_sigill_section(&oldact, &oldset);
+	}
+	for (n = 0; n < (sizeof(s390_km_functions) /
+			 sizeof(s390_supported_function_t)); n++)
+		if (S390_CRYPTO_TEST_MASK(mask, s390_km_functions[n].hw_fc))
+			*s390_km_functions[n].enabled = 1;
+
 	/* kmc query */
 	memset(mask, 0, sizeof(mask));
 	if (msa) {
@@ -258,6 +329,73 @@ static void set_switches(int msa)
 			 sizeof(s390_supported_function_t)); n++)
 		if (S390_CRYPTO_TEST_MASK(mask, s390_kmc_functions[n].hw_fc))
 			*s390_kmc_functions[n].enabled = 1;
+
+	/*
+	 * kmf query (CFB, Cipher Message with CFB Feedback, opcode 0xb92a).
+	 * Queried independently from KMC so that kmf_switch is only set
+	 * when the KMF instruction itself is functional, not just when KMC
+	 * reports AES support.  This avoids SIGILL on environments like
+	 * QEMU that implement the KMC AES function codes but not KMF.
+	 */
+	memset(mask, 0, sizeof(mask));
+	if (msa >= 4) {
+		unsigned int lcfb = 16; /* dummy, ignored for query fc=0 */
+		if (begin_sigill_section(&oldact, &oldset) == 0)
+			s390_kmf(S390_CRYPTO_QUERY, mask, (void *) 0,
+				 (void *) 0, 0, &lcfb);
+		end_sigill_section(&oldact, &oldset);
+	}
+	for (n = 0; n < (sizeof(s390_kmf_functions) /
+			 sizeof(s390_supported_function_t)); n++)
+		if (S390_CRYPTO_TEST_MASK(mask, s390_kmf_functions[n].hw_fc))
+			*s390_kmf_functions[n].enabled = 1;
+
+	/*
+	 * kmo query (OFB, Cipher Message with Output Feedback, opcode 0xb92b).
+	 * Same rationale as the KMF query above.
+	 */
+	memset(mask, 0, sizeof(mask));
+	if (msa >= 4) {
+		if (begin_sigill_section(&oldact, &oldset) == 0)
+			s390_kmo(S390_CRYPTO_QUERY, mask, (void *) 0,
+				 (void *) 0, 0);
+		end_sigill_section(&oldact, &oldset);
+	}
+	for (n = 0; n < (sizeof(s390_kmo_functions) /
+			 sizeof(s390_supported_function_t)); n++)
+		if (S390_CRYPTO_TEST_MASK(mask, s390_kmo_functions[n].hw_fc))
+			*s390_kmo_functions[n].enabled = 1;
+
+	/*
+	 * kmctr query (CTR, Cipher Message with Counter, opcode 0xb92d).
+	 * Same rationale as the KMF query above.
+	 */
+	memset(mask, 0, sizeof(mask));
+	if (msa >= 4) {
+		if (begin_sigill_section(&oldact, &oldset) == 0)
+			s390_kmctr(S390_CRYPTO_QUERY, mask, (void *) 0,
+				   (void *) 0, 0, (void *) 0);
+		end_sigill_section(&oldact, &oldset);
+	}
+	for (n = 0; n < (sizeof(s390_kmctr_functions) /
+			 sizeof(s390_supported_function_t)); n++)
+		if (S390_CRYPTO_TEST_MASK(mask, s390_kmctr_functions[n].hw_fc))
+			*s390_kmctr_functions[n].enabled = 1;
+
+	/*
+	 * kmac query (CMAC, Compute Message Authentication Code, opcode 0xb91e).
+	 * Same rationale as the KMF query above.
+	 */
+	memset(mask, 0, sizeof(mask));
+	if (msa >= 4) {
+		if (begin_sigill_section(&oldact, &oldset) == 0)
+			s390_kmac(S390_CRYPTO_QUERY, mask, (void *) 0, 0);
+		end_sigill_section(&oldact, &oldset);
+	}
+	for (n = 0; n < (sizeof(s390_kmac_functions) /
+			 sizeof(s390_supported_function_t)); n++)
+		if (S390_CRYPTO_TEST_MASK(mask, s390_kmac_functions[n].hw_fc))
+			*s390_kmac_functions[n].enabled = 1;
 
 	/* kimd query */
 	memset(mask, 0, sizeof(mask));
@@ -277,23 +415,36 @@ static void set_switches(int msa)
 			*s390_kimd_functions[n].enabled = 0;
 	}
 
+	/*
+	 * The msa5/msa8 and the pcc/kdsa switches are only set from the query
+	 * results below and not merely because the facility bits claim
+	 * MSA5/8/9. Some environments (e.g. QEMU) advertise an MSA level but do
+	 * not implement all of its instructions, and trying to use them raises
+	 * SIGILL. PCC and KDSA are queried independently of each other.
+	 */
+
 	/* pcc query */
 	memset(mask, 0, sizeof(mask));
 	if (9 <= msa) {
-		msa9_switch = 1;
 		if (begin_sigill_section(&oldact, &oldset) == 0)
 			s390_pcc(S390_CRYPTO_QUERY, mask);
 		end_sigill_section(&oldact, &oldset);
 	}
+	/*
+	 * Entries with hw_fc == 0 are placeholders that only keep the index
+	 * layout. Function code 0 is the query function itself, whose bit is
+	 * set whenever the query instruction executes, so such entries must
+	 * not be matched against the mask.
+	 */
 	for (n = 0; n < (sizeof(s390_pcc_functions) /
 			 sizeof(s390_supported_function_t)); n++)
-		if (S390_CRYPTO_TEST_MASK(mask, s390_pcc_functions[n].hw_fc))
+		if (s390_pcc_functions[n].hw_fc &&
+		    S390_CRYPTO_TEST_MASK(mask, s390_pcc_functions[n].hw_fc))
 			*s390_pcc_functions[n].enabled = 1;
 
 	/* ppno query */
 	memset(mask, 0, sizeof(mask));
 	if (5 <= msa) {
-		msa5_switch = 1;
 		if (begin_sigill_section(&oldact, &oldset) == 0)
 			s390_ppno(S390_CRYPTO_QUERY, mask, NULL, 0, NULL, 0);
 		end_sigill_section(&oldact, &oldset);
@@ -302,24 +453,26 @@ static void set_switches(int msa)
 			 sizeof(s390_supported_function_t)); n++)
 		if (S390_CRYPTO_TEST_MASK(mask, s390_ppno_functions[n].hw_fc))
 			*s390_ppno_functions[n].enabled = 1;
+	if (sha512_drng_switch || trng_switch)
+		msa5_switch = 1;
 
 	/* kma query */
 	memset(mask, 0, sizeof(mask));
 	if (8 <= msa) {
-		msa8_switch = 1;
 		if (begin_sigill_section(&oldact, &oldset) == 0)
 			s390_kma(S390_CRYPTO_QUERY, mask, NULL, NULL, 0, NULL, 0);
 		end_sigill_section(&oldact, &oldset);
 	}
+	/* Skip the hw_fc == 0 placeholder entries, see pcc query. */
 	for (n = 0; n < (sizeof(s390_kma_functions) /
 			 sizeof(s390_supported_function_t)); n++)
-		if (S390_CRYPTO_TEST_MASK(mask, s390_kma_functions[n].hw_fc))
+		if (s390_kma_functions[n].hw_fc &&
+		    S390_CRYPTO_TEST_MASK(mask, s390_kma_functions[n].hw_fc))
 			*s390_kma_functions[n].enabled = 1;
 
 	/* kdsa query */
 	memset(mask, 0, sizeof(mask));
 	if (9 <= msa) {
-		msa9_switch = 1;
 		if (begin_sigill_section(&oldact, &oldset) == 0)
 			s390_kdsa(S390_CRYPTO_QUERY, mask, NULL, 0);
 		end_sigill_section(&oldact, &oldset);
@@ -504,30 +657,30 @@ libica_func_list_element_int icaList[] = {
  {SHAKE256, KIMD, SHAKE_256, 0, 0, 0, 0},
  {G_HASH, KIMD, GHASH, 0, 0, 0, 0},
 
- {DES_ECB,      KMC,  DEA_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
+ {DES_ECB,      KM,   DEA_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
  {DES_CBC,      KMC,  DEA_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
- {DES_OFB,      MSA4, DEA_ENCRYPT, 0, 0, 0, 0},
- {DES_CFB,      MSA4, DEA_ENCRYPT, 0, 0, 0, 0},
- {DES_CTR,      MSA4, DEA_ENCRYPT, 0, 0, 0, 0},
- {DES_CMAC,     MSA4, DEA_ENCRYPT, 0, 0, 0, 0}, // CPACF only (MSA4)
+ {DES_OFB,      KMO,   DEA_ENCRYPT, 0, 0, 0, 0},
+ {DES_CFB,      KMF,   DEA_ENCRYPT, 0, 0, 0, 0},
+ {DES_CTR,      KMCTR, DEA_ENCRYPT, 0, 0, 0, 0},
+ {DES_CMAC,     KMAC,  DEA_ENCRYPT, 0, 0, 0, 0},
 
- {DES3_ECB,     KMC,  TDEA_192_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
- {DES3_CBC,     KMC,  TDEA_192_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
- {DES3_OFB,     MSA4, TDEA_192_ENCRYPT,           0, 0, 0, 0},
- {DES3_CFB,     MSA4, TDEA_192_ENCRYPT,           0, 0, 0, 0},
- {DES3_CTR,     MSA4, TDEA_192_ENCRYPT,           0, 0, 0, 0},
- {DES3_CMAC,    MSA4, TDEA_192_ENCRYPT,           0, 0, 0, 0},
+ {DES3_ECB,     KM,    TDEA_192_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
+ {DES3_CBC,     KMC,   TDEA_192_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
+ {DES3_OFB,     KMO,   TDEA_192_ENCRYPT,           0, 0, 0, 0},
+ {DES3_CFB,     KMF,   TDEA_192_ENCRYPT,           0, 0, 0, 0},
+ {DES3_CTR,     KMCTR, TDEA_192_ENCRYPT,           0, 0, 0, 0},
+ {DES3_CMAC,    KMAC,  TDEA_192_ENCRYPT,           0, 0, 0, 0},
 
- {AES_ECB,      KMC,  AES_128_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
+ {AES_ECB,      KM,   AES_128_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
  {AES_CBC,      KMC,  AES_128_ENCRYPT, ICA_FLAG_SW, 0, 0, 0},
- {AES_OFB,      MSA4, AES_128_ENCRYPT,           0, 0, 0, 0},
- {AES_CFB,      MSA4, AES_128_ENCRYPT,           0, 0, 0, 0},
- {AES_CTR,      MSA4, AES_128_ENCRYPT,           0, 0, 0, 0},
- {AES_CMAC,     MSA4, AES_128_ENCRYPT,           0, 0, 0, 0},
- {AES_CCM,      MSA4, AES_128_ENCRYPT,           0, 0, 0, 0},
- {AES_GCM,      MSA4, AES_128_ENCRYPT,           0, 0, 0, 0},
+ {AES_OFB,      KMO,   AES_128_ENCRYPT,           0, 0, 0, 0},
+ {AES_CFB,      KMF,   AES_128_ENCRYPT,           0, 0, 0, 0},
+ {AES_CTR,      KMCTR, AES_128_ENCRYPT,           0, 0, 0, 0},
+ {AES_CMAC,     KMAC,  AES_128_ENCRYPT,           0, 0, 0, 0},
+ {AES_CCM,      AES_COMBINED, AES_128_ENCRYPT,           0, 0, 0, 0},
+ {AES_GCM,      AES_COMBINED, AES_128_ENCRYPT,           0, 0, 0, 0},
  {AES_GCM_KMA,  MSA8, AES_128_GCM_ENCRYPT,       0, 0, 0, 0},
- {AES_XTS,      MSA4, AES_128_XTS_ENCRYPT,       0, 0, 0, 0},
+ {AES_XTS,      KM,   AES_128_XTS_ENCRYPT,       0, 0, 0, 0},
  {P_RNG,        ADAPTER, 0, ICA_FLAG_SHW | ICA_FLAG_SW, 0, 0, 0}, // SHW (CPACF) + SW
  {EC_DH,        ADAPTER, 0, ICA_FLAG_SW, 0, 0, 0},
  {EC_DSA_SIGN,	ADAPTER, 0, ICA_FLAG_SW, 0, 0, 0},
@@ -570,6 +723,67 @@ int s390_initialize_functionlist()
 		case KIMD:
 			e->flags |= *s390_kimd_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
 			break;
+		case KM:
+			e->flags |= *s390_km_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
+			if (e->id == AES_128_ENCRYPT) { // check for the maximum size
+				if (*s390_km_functions[icaList[AES_256_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_256;
+				if (*s390_km_functions[icaList[AES_192_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_192;
+				if (*s390_km_functions[icaList[AES_128_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_128;
+			} else if (e->id == AES_128_XTS_ENCRYPT) { // check for the maximum size
+				if (*s390_km_functions[icaList[AES_256_XTS_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_256;
+				if (*s390_km_functions[icaList[AES_128_XTS_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_128;
+			}
+			break;
+		case AES_COMBINED:
+			/*
+			 * CCM and GCM are built from several CPACF instructions
+			 * and are only available if all of them are:
+			 * CCM: CTR (KMCTR) and CMAC (KMAC).
+			 * GCM: ECB (KM), GHASH (KIMD) and either KMA or CTR.
+			 */
+			if (e->mech_mode_id == AES_CCM) {
+				e->flags |= (*s390_kmctr_functions[AES_128_ENCRYPT].enabled &&
+					     *s390_kmac_functions[AES_128_ENCRYPT].enabled) ?
+							ICA_FLAG_SHW : 0;
+				if (*s390_kmctr_functions[AES_256_ENCRYPT].enabled &&
+				    *s390_kmac_functions[AES_256_ENCRYPT].enabled)
+					e->property |= ICA_PROPERTY_AES_256;
+				if (*s390_kmctr_functions[AES_192_ENCRYPT].enabled &&
+				    *s390_kmac_functions[AES_192_ENCRYPT].enabled)
+					e->property |= ICA_PROPERTY_AES_192;
+				if (*s390_kmctr_functions[AES_128_ENCRYPT].enabled &&
+				    *s390_kmac_functions[AES_128_ENCRYPT].enabled)
+					e->property |= ICA_PROPERTY_AES_128;
+			} else { /* AES_GCM */
+				/*
+				 * The subkey is always computed with KM (ECB).
+				 * Then either KMA does the whole operation, or
+				 * it is built from KMCTR (CTR) and GHASH (KIMD).
+				 */
+				if (*s390_km_functions[AES_256_ENCRYPT].enabled &&
+				    (*s390_kma_functions[AES_256_GCM_ENCRYPT].enabled ||
+				     (*s390_kmctr_functions[AES_256_ENCRYPT].enabled &&
+				      *s390_kimd_functions[GHASH].enabled)))
+					e->property |= ICA_PROPERTY_AES_256;
+				if (*s390_km_functions[AES_192_ENCRYPT].enabled &&
+				    (*s390_kma_functions[AES_192_GCM_ENCRYPT].enabled ||
+				     (*s390_kmctr_functions[AES_192_ENCRYPT].enabled &&
+				      *s390_kimd_functions[GHASH].enabled)))
+					e->property |= ICA_PROPERTY_AES_192;
+				if (*s390_km_functions[AES_128_ENCRYPT].enabled &&
+				    (*s390_kma_functions[AES_128_GCM_ENCRYPT].enabled ||
+				     (*s390_kmctr_functions[AES_128_ENCRYPT].enabled &&
+				      *s390_kimd_functions[GHASH].enabled))) {
+					e->property |= ICA_PROPERTY_AES_128;
+					e->flags |= ICA_FLAG_SHW;
+				}
+			}
+			break;
 		case KMC:
 			e->flags |= *s390_kmc_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
 			if (e->id == AES_128_ENCRYPT) { // check for the maximum size
@@ -581,19 +795,47 @@ int s390_initialize_functionlist()
 					e->property |= ICA_PROPERTY_AES_128;
 			}
 			break;
-		case MSA4:
-			e->flags |= *s390_msa4_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
+		case KMF:
+			e->flags |= *s390_kmf_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
 			if (e->id == AES_128_ENCRYPT) { // check for the maximum size
-				if (*s390_msa4_functions[icaList[AES_256_ENCRYPT].id].enabled)
+				if (*s390_kmf_functions[icaList[AES_256_ENCRYPT].id].enabled)
 					e->property |= ICA_PROPERTY_AES_256;
-				if (*s390_msa4_functions[icaList[AES_192_ENCRYPT].id].enabled)
+				if (*s390_kmf_functions[icaList[AES_192_ENCRYPT].id].enabled)
 					e->property |= ICA_PROPERTY_AES_192;
-				if (*s390_msa4_functions[icaList[AES_128_ENCRYPT].id].enabled)
+				if (*s390_kmf_functions[icaList[AES_128_ENCRYPT].id].enabled)
 					e->property |= ICA_PROPERTY_AES_128;
-			} else if (e->id == AES_128_XTS_ENCRYPT) { // check for the maximum size
-				if (*s390_msa4_functions[icaList[AES_256_XTS_ENCRYPT].id].enabled)
+			}
+			break;
+		case KMO:
+			e->flags |= *s390_kmo_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
+			if (e->id == AES_128_ENCRYPT) { // check for the maximum size
+				if (*s390_kmo_functions[icaList[AES_256_ENCRYPT].id].enabled)
 					e->property |= ICA_PROPERTY_AES_256;
-				if (*s390_msa4_functions[icaList[AES_128_XTS_ENCRYPT].id].enabled)
+				if (*s390_kmo_functions[icaList[AES_192_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_192;
+				if (*s390_kmo_functions[icaList[AES_128_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_128;
+			}
+			break;
+		case KMCTR:
+			e->flags |= *s390_kmctr_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
+			if (e->id == AES_128_ENCRYPT) {
+				if (*s390_kmctr_functions[icaList[AES_256_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_256;
+				if (*s390_kmctr_functions[icaList[AES_192_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_192;
+				if (*s390_kmctr_functions[icaList[AES_128_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_128;
+			}
+			break;
+		case KMAC:
+			e->flags |= *s390_kmac_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
+			if (e->id == AES_128_ENCRYPT) {
+				if (*s390_kmac_functions[icaList[AES_256_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_256;
+				if (*s390_kmac_functions[icaList[AES_192_ENCRYPT].id].enabled)
+					e->property |= ICA_PROPERTY_AES_192;
+				if (*s390_kmac_functions[icaList[AES_128_ENCRYPT].id].enabled)
 					e->property |= ICA_PROPERTY_AES_128;
 			}
 			break;
@@ -628,7 +870,11 @@ int s390_initialize_functionlist()
 		case EC_DSA_SIGN: /* fall-through */
 		case EC_DSA_VERIFY: /* fall-through */
 		case EC_KGEN:
-			e->flags |= *s390_kdsa_functions[e->id].enabled ? ICA_FLAG_SHW : 0;
+			/* ECDH and EC key generation use PCC, ECDSA uses KDSA */
+			if (e->mech_mode_id == EC_DH || e->mech_mode_id == EC_KGEN)
+				e->flags |= pcc_switch ? ICA_FLAG_SHW : 0;
+			else
+				e->flags |= kdsa_switch ? ICA_FLAG_SHW : 0;
 			if (e->flags)
 				e->property |= ICA_PROPERTY_EC_NIST;
 			if (ecc_via_online_card) {

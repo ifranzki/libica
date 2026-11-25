@@ -330,6 +330,19 @@ static inline unsigned int s390_gcm_authenticate_last(
 	return 0;
 }
 
+/*
+ * KMA does the whole operation. Otherwise GCM is built from KMCTR (counter
+ * mode encryption) and KIMD-GHASH.
+ */
+static inline int s390_gcm_core_available(unsigned int function_code)
+{
+	if (msa8_switch)
+		return 1;
+
+	return *s390_kmctr_functions[UNDIRECTED_FC(function_code)].enabled &&
+	       *s390_kimd_functions[GHASH].enabled;
+}
+
 static inline int s390_gcm(unsigned int function_code,
 	     unsigned char *plaintext, unsigned long text_length,
 	     unsigned char *ciphertext,
@@ -345,7 +358,9 @@ static inline int s390_gcm(unsigned int function_code,
 	unsigned char tmp_tag[AES_BLOCK_SIZE];
 	unsigned int rc;
 
-	if (!msa4_switch)
+	/* KM is needed to calculate the subkey H, even when KMA is used. */
+	if (!*s390_km_functions[UNDIRECTED_FC(function_code)].enabled ||
+	    !s390_gcm_core_available(function_code))
 		return ENODEV;
 
 	/* calculate subkey H */
@@ -529,7 +544,8 @@ static inline int s390_gcm_intermediate(unsigned int function_code,
 	unsigned int rc, laad;
 	unsigned char *in, *out;
 
-	if (!msa4_switch)
+	/* The subkey is passed in, so KM is not needed here. */
+	if (!s390_gcm_core_available(function_code))
 		return ENODEV;
 
 	if (!msa8_switch) {
